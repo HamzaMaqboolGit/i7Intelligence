@@ -479,6 +479,7 @@ export const modules: Record<string, ModuleConfig> = {
       f("timezone", "Timezone"),
       f("dateFormat", "Date format"),
       f("timeFormat", "Time format"),
+      f("maintenanceMode", "Maintenance mode", "checkbox"),
       f("darkLogo", "Dark logo", "image"),
       f("sharingImage", "Social sharing image", "image"),
       f("secondaryLabel", "Header secondary button label"),

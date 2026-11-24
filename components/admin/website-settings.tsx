@@ -36,6 +36,7 @@ const settingsTabs = [
       "timezone",
       "dateFormat",
       "timeFormat",
+      "maintenanceMode",
     ],
   },
   {
