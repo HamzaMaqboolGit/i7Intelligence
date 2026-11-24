@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev --hostname 127.0.0.1",
     "build": "next build --webpack",
-    "start": "next start --hostname 127.0.0.1",
+    "start": "node scripts/start-hostinger.mjs",
+    "start:next": "next start --hostname 127.0.0.1",
     "typecheck": "tsc --noEmit",
     "lint": "eslint app components lib scripts --max-warnings=0",
     "db:migrate": "node scripts/prisma.mjs migrate deploy",
