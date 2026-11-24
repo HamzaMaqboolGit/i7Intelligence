@@ -1,0 +1,49 @@
+:root {
+  --navy-950: #080f1d;
+  --navy-900: #101d33;
+  --navy-800: #172b49;
+  --navy-700: #243d60;
+  --navy-100: #dce5f0;
+  --surface: #ffffff;
+  --background: #f7f9fc;
+  --muted: #718096;
+  --border: #e5eaf1;
+  --text: #111827;
+  --soft: var(--background);
+  --dark: var(--navy-950);
+  --primary: var(--navy-900);
+  --navy: var(--navy-900);
+  --light-blue: var(--navy-100);
+  --danger: #b42332;
+  --danger-soft: #fff0f1;
+  --success: #167647;
+  --success-soft: #eaf7ee;
+  --warning: #8a5b10;
+  --warning-soft: #fff6e5;
+  --shadow: 0 8px 30px rgb(8 15 29 / 5%);
+  --overlay: rgb(8 15 29 / 45%);
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+:root {
+  --header-surface: rgb(255 255 255 / 96%);
+  --border-soft: rgb(229 233 240 / 35%);
+  --dark-border: rgb(255 255 255 / 11%);
+  --light-border: rgb(255 255 255 / 33%);
+  --photo-overlay: rgb(8 15 29 / 62%);
+  --shadow-soft-color: rgb(8 15 29 / 7%);
+}
+:root {
+  --text-secondary: #5d6879;
+  --shadow-popover: 0 12px 45px rgb(8 15 29 / 12%);
+  --shadow-drawer: -20px 0 70px rgb(8 15 29 / 10%);
+}
+
+:root {
+  --sidebar: #0b1730;
+  --sidebar-hover: #152746;
+  --sidebar-active: #1c3765;
+  --admin-primary: #102a56;
+}
+:root {
+  --header-scrolled-surface: rgb(255 255 255 / 84%);
+}

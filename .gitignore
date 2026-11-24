@@ -1,0 +1,15 @@
+node_modules/
+.next/
+.env*
+!.env.example
+.local-mysql/
+.local-mysql-*/
+.local-mails/
+.backups/
+.local-admin.json
+.local-test-*
+storage/
+
+.stripe-local/
+
+exports/

@@ -1,0 +1,3 @@
+ALTER TABLE `two_factors` ADD COLUMN `verified` BOOLEAN NOT NULL DEFAULT false,
+ ADD COLUMN `failedVerificationCount` INTEGER NOT NULL DEFAULT 0,
+ ADD COLUMN `lockedUntil` DATETIME(3) NULL;

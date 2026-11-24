@@ -1,0 +1,879 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String                  @id
+  name             String
+  email            String                  @unique
+  emailVerified    Boolean                 @default(false)
+  image            String?                 @db.Text
+  twoFactorEnabled Boolean                 @default(false)
+  disabled         Boolean                 @default(false)
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  passkeys         Passkey[]
+  sessions         Session[]
+  accounts         Account[]
+  twoFactors       TwoFactor[]
+  roles            UserRole[]
+  notifications    NotificationReceipt[]
+  preferences      NotificationPreference?
+  logs             ActivityLog[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?  @db.Text
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("sessions")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?   @db.Text
+  refreshToken          String?   @db.Text
+  idToken               String?   @db.Text
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?   @db.Text
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String   @db.Text
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("password_reset_tokens")
+}
+
+model TwoFactor {
+  verified                Boolean   @default(false)
+  failedVerificationCount Int       @default(0)
+  lockedUntil             DateTime?
+  id                      String    @id
+  secret                  String    @db.Text
+  backupCodes             String    @db.Text
+  userId                  String
+  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("two_factors")
+}
+
+model RateLimit {
+  id          String @id @default(cuid())
+  key         String @unique
+  count       Int
+  lastRequest BigInt
+
+  @@map("rate_limits")
+}
+
+model Role {
+  id          String           @id @default(cuid())
+  name        String           @unique
+  users       UserRole[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id    String           @id @default(cuid())
+  key   String           @unique
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  userId String
+  roleId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+model Notification {
+  id          String                @id @default(cuid())
+  type        String
+  title       String
+  description String                @db.Text
+  href        String?
+  createdAt   DateTime              @default(now())
+  receipts    NotificationReceipt[]
+
+  @@index([type, createdAt])
+  @@map("notifications")
+}
+
+model NotificationReceipt {
+  notificationId String
+  userId         String
+  readAt         DateTime?
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([notificationId, userId])
+  @@index([userId, readAt])
+  @@map("notification_receipts")
+}
+
+model NotificationPreference {
+  userId    String   @id
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  data      Json
+  updatedAt DateTime @updatedAt
+
+  @@map("notification_preferences")
+}
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action      String
+  entity      String
+  entityId    String?
+  description String
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([entity, entityId])
+  @@map("activity_logs")
+}
+
+model Page {
+  id          String        @id @default(cuid())
+  title       String
+  slug        String        @unique
+  description String?       @db.Text
+  status      String        @default("draft")
+  sortOrder   Int           @default(0)
+  data        Json
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  deletedAt   DateTime?
+  sections    PageSection[]
+
+  @@index([status, deletedAt, sortOrder])
+  @@index([createdAt])
+  @@map("pages")
+}
+
+model PageSection {
+  id          String    @id @default(cuid())
+  title       String
+  slug        String    @unique
+  description String?   @db.Text
+  status      String    @default("draft")
+  sortOrder   Int       @default(0)
+  data        Json
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  pageId      String?
+  page        Page?     @relation(fields: [pageId], references: [id], onDelete: SetNull)
+
+  @@index([pageId])
+  @@index([status, deletedAt, sortOrder])
+  @@index([createdAt])
+  @@map("page_sections")
+}
+
+model PortfolioProject {
+  id          String           @id @default(cuid())
+  title       String
+  slug        String           @unique
+  description String?          @db.Text
+  status      String           @default("draft")
+  sortOrder   Int              @default(0)
+  data        Json
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  deletedAt   DateTime?
+  images      PortfolioImage[]
+
+  @@index([status, deletedAt, sortOrder])
+  @@index([createdAt])
+  @@map("portfolio_projects")
+}
+
+model PortfolioImage {
+  id          String            @id @default(cuid())
+  title       String
+  slug        String            @unique
+  description String?           @db.Text
+  status      String            @default("draft")
+  sortOrder   Int               @default(0)
+  data        Json
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  deletedAt   DateTime?
+  projectId   String?
+  project     PortfolioProject? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
+  @@index([status, deletedAt, sortOrder])
+  @@index([createdAt])
+  @@map("portfolio_images")
+}
+
+model Service {
+  id          String    @id @default(cuid())
+  title       String
+  slug        String    @unique
+  description String?   @db.Text
+  status      String    @default("draft")
+  sortOrder   Int       @default(0)
+  data        Json
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([status, deletedAt, sortOrder])
+  @@index([createdAt])
+  @@map("services")
+}
+
+model BlogPost {
+  id          String        @id @default(cuid())
+  title       String
+  slug        String        @unique
+  description String?       @db.Text
+  status      String        @default("draft")
+  sortOrder   Int           @default(0)
+  data        Json
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  deletedAt   DateTime?
+  categoryId  String?
+  category    BlogCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([categoryId])
+  @@index([status, deletedAt, sortOrder])
+  @@index([createdAt])
+  @@map("blog_posts")
+}
+
+model BlogCategory {
+  id          String     @id @default(cuid())
+  title       String
+  slug        String     @unique
+  description String?    @db.Text
+  status      String     @default("draft")
+  sortOrder   Int        @default(0)
+  data        Json
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  deletedAt   DateTime?
+  posts       BlogPost[]
+
+  @@index([status, deletedAt, sortOrder])
+  @@index([createdAt])
+  @@map("blog_categories")
+}
+
+model Testimonial {
+  id          String    @id @default(cuid())
+  title       String
+  slug        String    @unique
+  description String?   @db.Text
+  status      String    @default("draft")
+  sortOrder   Int       @default(0)
+  data        Json
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([status, deletedAt, sortOrder])
+  @@index([createdAt])
+  @@map("testimonials")
+}
+
+model TeamMember {
+  id          String    @id @default(cuid())
+  title       String
+  slug        String    @unique
+  description String?   @db.Text
+  status      String    @default("draft")
+  sortOrder   Int       @default(0)
+  data        Json
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([status, deletedAt, sortOrder])
+  @@index([createdAt])
+  @@map("team_members")
+}
+
+model Career {
+  id          String    @id @default(cuid())
+  title       String
+  slug        String    @unique
+  description String?   @db.Text
+  status      String    @default("draft")
+  sortOrder   Int       @default(0)
+  data        Json
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([status, deletedAt, sortOrder])
+  @@index([createdAt])
+  @@map("careers")
+}
+
+model Faq {
+  id          String    @id @default(cuid())
+  title       String
+  slug        String    @unique
+  description String?   @db.Text
+  status      String    @default("draft")
+  sortOrder   Int       @default(0)
+  data        Json
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([status, deletedAt, sortOrder])
+  @@index([createdAt])
+  @@map("faqs")
+}
+
+model Media {
+  id          String    @id @default(cuid())
+  title       String
+  slug        String    @unique
+  description String?   @db.Text
+  status      String    @default("draft")
+  sortOrder   Int       @default(0)
+  data        Json
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([status, deletedAt, sortOrder])
+  @@index([createdAt])
+  @@map("media")
+}
+
+model ContactMessage {
+  receipt      ContactReceipt?
+  conversation ConversationMessage[]
+  id           String                @id @default(cuid())
+  title        String
+  slug         String                @unique
+  description  String?               @db.Text
+  status       String                @default("draft")
+  sortOrder    Int                   @default(0)
+  data         Json
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  deletedAt    DateTime?
+
+  @@index([status, deletedAt, sortOrder])
+  @@index([createdAt])
+  @@map("contact_messages")
+}
+
+model BookingRequest {
+  id          String    @id @default(cuid())
+  title       String
+  slug        String    @unique
+  description String?   @db.Text
+  status      String    @default("draft")
+  sortOrder   Int       @default(0)
+  data        Json
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([status, deletedAt, sortOrder])
+  @@index([createdAt])
+  @@map("booking_requests")
+}
+
+model Client {
+  id          String    @id @default(cuid())
+  title       String
+  slug        String    @unique
+  description String?   @db.Text
+  status      String    @default("draft")
+  sortOrder   Int       @default(0)
+  data        Json
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([status, deletedAt, sortOrder])
+  @@index([createdAt])
+  @@map("clients")
+}
+
+model NewsletterSubscriber {
+  id          String    @id @default(cuid())
+  title       String
+  slug        String    @unique
+  description String?   @db.Text
+  status      String    @default("draft")
+  sortOrder   Int       @default(0)
+  data        Json
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([status, deletedAt, sortOrder])
+  @@index([createdAt])
+  @@map("newsletter_subscribers")
+}
+
+model SiteSetting {
+  id          String    @id @default(cuid())
+  title       String
+  slug        String    @unique
+  description String?   @db.Text
+  status      String    @default("draft")
+  sortOrder   Int       @default(0)
+  data        Json
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([status, deletedAt, sortOrder])
+  @@index([createdAt])
+  @@map("site_settings")
+}
+
+model NavigationItem {
+  id          String    @id @default(cuid())
+  title       String
+  slug        String    @unique
+  description String?   @db.Text
+  status      String    @default("draft")
+  sortOrder   Int       @default(0)
+  data        Json
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([status, deletedAt, sortOrder])
+  @@index([createdAt])
+  @@map("navigation_items")
+}
+
+model Location {
+  id          String    @id @default(cuid())
+  title       String
+  slug        String    @unique
+  description String?   @db.Text
+  status      String    @default("draft")
+  sortOrder   Int       @default(0)
+  data        Json
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([status, deletedAt, sortOrder])
+  @@index([createdAt])
+  @@map("locations")
+}
+
+// Existing tables are retained explicitly so future migration diffs preserve them.
+model LegacyEnquiry {
+  id        BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  name      String   @db.VarChar(100)
+  email     String   @db.VarChar(254)
+  service   String   @db.VarChar(80)
+  message   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(0)
+
+  @@index([createdAt], map: "idx_enquiries_created")
+  @@map("enquiries")
+}
+
+model LegacyEnquiryLimit {
+  identityHash String   @id @map("identity_hash") @db.Char(64)
+  windowStart  DateTime @default(now()) @map("window_start") @db.Timestamp(0)
+  attempts     Int      @default(0) @db.UnsignedInt
+
+  @@map("enquiry_limits")
+}
+
+// Private email configuration is deliberately separate from public site settings.
+model EmailSetting {
+  id        String   @id @default("smtp")
+  data      Json
+  secret    String?  @db.Text
+  updatedAt DateTime @updatedAt
+
+  @@map("email_settings")
+}
+
+model EmailTemplate {
+  key       String   @id
+  subject   String
+  body      String   @db.Text
+  updatedAt DateTime @updatedAt
+
+  @@map("email_templates")
+}
+
+model ConversationMessage {
+  id        String         @id @default(cuid())
+  inquiryId String
+  inquiry   ContactMessage @relation(fields: [inquiryId], references: [id], onDelete: Restrict)
+  kind      String         @default("reply")
+  authorId  String?
+  subject   String
+  body      String         @db.Text
+  messageId String         @unique
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  outbox    EmailOutbox?
+
+  @@index([inquiryId, createdAt])
+  @@map("inquiry_conversations")
+}
+
+model EmailOutbox {
+  id               String               @id @default(cuid())
+  key              String               @unique
+  conversationId   String?              @unique
+  conversation     ConversationMessage? @relation(fields: [conversationId], references: [id], onDelete: Restrict)
+  recipient        String
+  subject          String
+  html             String               @db.Text
+  messageId        String               @unique
+  inReplyTo        String?
+  referenceHeaders String?              @db.Text
+  template         String?
+  status           String               @default("pending")
+  attempts         Int                  @default(0)
+  lastError        String?
+  acceptedAt       DateTime?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  logs             EmailDeliveryLog[]
+
+  @@index([status, createdAt])
+  @@map("email_outbox")
+}
+
+model EmailDeliveryLog {
+  id        String      @id @default(cuid())
+  outboxId  String
+  outbox    EmailOutbox @relation(fields: [outboxId], references: [id], onDelete: Restrict)
+  status    String
+  detail    String?
+  createdAt DateTime    @default(now())
+
+  @@index([outboxId, createdAt])
+  @@map("email_delivery_logs")
+}
+
+model ContactReceipt {
+  key       String         @id
+  reference String         @unique
+  inquiryId String         @unique
+  inquiry   ContactMessage @relation(fields: [inquiryId], references: [id], onDelete: Restrict)
+  createdAt DateTime       @default(now())
+
+  @@map("contact_submission_receipts")
+}
+
+model StoreProduct {
+  files      StoreProductFile[]
+  cartItems  StoreCartItem[]
+  orderItems StoreOrderItem[]
+
+  id          String    @id @default(cuid())
+  title       String
+  slug        String    @unique
+  description String?   @db.Text
+  status      String    @default("draft")
+  sortOrder   Int       @default(0)
+  data        Json
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([status, deletedAt, sortOrder])
+  @@map("store_products")
+}
+
+model StoreCategory {
+  id          String    @id @default(cuid())
+  title       String
+  slug        String    @unique
+  description String?   @db.Text
+  status      String    @default("draft")
+  sortOrder   Int       @default(0)
+  data        Json
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([status, deletedAt, sortOrder])
+  @@map("store_categories")
+}
+
+model StoreCoupon {
+  id          String    @id @default(cuid())
+  title       String
+  slug        String    @unique
+  description String?   @db.Text
+  status      String    @default("draft")
+  sortOrder   Int       @default(0)
+  data        Json
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([status, deletedAt, sortOrder])
+  @@map("store_coupons")
+}
+
+model StoreProductFile {
+  id           String             @id @default(cuid())
+  productId    String
+  product      StoreProduct       @relation(fields: [productId], references: [id], onDelete: Restrict)
+  storageKey   String             @unique
+  name         String
+  mime         String
+  size         Int
+  version      String             @default("1.0")
+  createdAt    DateTime           @default(now())
+  deletedAt    DateTime?
+  entitlements StoreEntitlement[]
+
+  @@index([productId, deletedAt])
+  @@map("store_product_files")
+}
+
+model StoreCart {
+  id        String          @id @default(cuid())
+  tokenHash String          @unique
+  userId    String?
+  version   Int             @default(0)
+  coupon    String?
+  expiresAt DateTime
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  items     StoreCartItem[]
+  orders    StoreOrder[]
+
+  @@index([expiresAt])
+  @@map("store_carts")
+}
+
+model StoreCartItem {
+  id        String       @id @default(cuid())
+  cartId    String
+  cart      StoreCart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String
+  product   StoreProduct @relation(fields: [productId], references: [id], onDelete: Restrict)
+  package   String       @default("standard")
+  quantity  Int          @default(1)
+
+  @@unique([cartId, productId, package])
+  @@map("store_cart_items")
+}
+
+model StoreCustomer {
+  id        String       @id @default(cuid())
+  email     String       @unique
+  name      String
+  phone     String?
+  country   String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  orders    StoreOrder[]
+
+  @@map("store_customers")
+}
+
+model StoreOrder {
+  id                String            @id @default(cuid())
+  reference         String            @unique
+  requestKey        String            @unique
+  cartId            String
+  cart              StoreCart         @relation(fields: [cartId], references: [id], onDelete: Restrict)
+  customerId        String
+  customer          StoreCustomer     @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  accessHash        String            @unique
+  currency          String
+  subtotal          Int
+  discount          Int               @default(0)
+  tax               Int               @default(0)
+  total             Int
+  coupon            String?
+  paymentStatus     String            @default("pending")
+  fulfillmentStatus String            @default("pending")
+  stripeSessionId   String?           @unique
+  stripePaymentId   String?           @unique
+  billing           Json
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  items             StoreOrderItem[]
+  events            StoreOrderEvent[]
+  refunds           StoreRefund[]
+
+  @@index([paymentStatus, createdAt])
+  @@index([customerId, createdAt])
+  @@map("store_orders")
+}
+
+model StoreOrderItem {
+  id            String             @id @default(cuid())
+  orderId       String
+  order         StoreOrder         @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  productId     String
+  product       StoreProduct       @relation(fields: [productId], references: [id], onDelete: Restrict)
+  title         String
+  kind          String
+  package       String
+  unitAmount    Int
+  quantity      Int
+  snapshot      Json
+  serviceStatus String             @default("pending")
+  requirements  String?            @db.Text
+  notes         String?            @db.Text
+  entitlements  StoreEntitlement[]
+
+  @@index([orderId])
+  @@map("store_order_items")
+}
+
+model StoreEntitlement {
+  id        String               @id @default(cuid())
+  itemId    String
+  item      StoreOrderItem       @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  fileId    String
+  file      StoreProductFile     @relation(fields: [fileId], references: [id], onDelete: Restrict)
+  tokenHash String               @unique
+  expiresAt DateTime
+  maximum   Int                  @default(5)
+  used      Int                  @default(0)
+  revokedAt DateTime?
+  createdAt DateTime             @default(now())
+  events    StoreDownloadEvent[]
+
+  @@unique([itemId, fileId])
+  @@index([expiresAt])
+  @@map("store_download_entitlements")
+}
+
+model StoreDownloadEvent {
+  id            String           @id @default(cuid())
+  entitlementId String
+  entitlement   StoreEntitlement @relation(fields: [entitlementId], references: [id], onDelete: Restrict)
+  createdAt     DateTime         @default(now())
+
+  @@index([createdAt])
+  @@map("store_download_events")
+}
+
+model StoreOrderEvent {
+  id          String     @id @default(cuid())
+  orderId     String
+  order       StoreOrder @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  action      String
+  description String
+  createdAt   DateTime   @default(now())
+
+  @@index([orderId, createdAt])
+  @@map("store_order_events")
+}
+
+model StoreWebhookEvent {
+  id        String   @id
+  type      String
+  createdAt DateTime @default(now())
+
+  @@map("store_webhook_events")
+}
+
+model StoreRefund {
+  id         String     @id @default(cuid())
+  orderId    String
+  order      StoreOrder @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  requestKey String     @unique
+  providerId String?    @unique
+  amount     Int
+  currency   String
+  status     String     @default("pending")
+  createdAt  DateTime   @default(now())
+
+  @@map("store_refunds")
+}
+
+model IntegrationSetting {
+  id        String   @id
+  data      Json
+  secret    String?  @db.Text
+  updatedAt DateTime @updatedAt
+
+  @@map("integration_settings")
+}
+
+model Passkey {
+  id           String    @id
+  name         String?   @db.VarChar(100)
+  publicKey    String    @db.Text
+  userId       String
+  credentialID String    @unique @db.VarChar(512)
+  counter      Int
+  deviceType   String
+  backedUp     Boolean
+  transports   String?
+  createdAt    DateTime?
+  aaguid       String?
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("passkeys")
+}
