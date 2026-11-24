@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 const config: NextConfig = {
   turbopack: { root: process.cwd() },
+  // Hostinger shared builders have a low process/thread limit. Keeping page
+  // collection single-worker avoids build aborts without changing runtime.
+  experimental: { cpus: 1 },
   poweredByHeader: false,
   async headers() {
     return [
